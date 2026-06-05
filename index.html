@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GitHub Pick · 开源研究看板</title>
+
+<!-- Paper + fountain-pen-ink webfonts: Newsreader (Latin serif) + LXGW WenKai (中文楷书) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont/style.css">
+
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+
+  /* Hide scrollbars globally. */
+  html { scrollbar-width: none; }
+  html::-webkit-scrollbar { display: none; }
+  body { scrollbar-width: none; }
+  body::-webkit-scrollbar { display: none; }
+  *::-webkit-scrollbar { display: none; }
+  * { scrollbar-width: none; }
+
+  /* ------------------------------------------------------------
+     Blue fountain pen ink on cream paper
+       paper    #faf6ed    象牙米（底色）
+       card     #fbf8ef    浮纸
+       ink      #1c2847    钢笔蓝黑（主墨色）
+       ink-2    #2b3a5c    正文墨
+       ink-3    #5a6a8a    灰墨
+       ink-4    #8a94a8    淡墨
+       line     #e4dcc5    暖细线
+       line-2   #b4afa0    hover 细线
+       blue     #2f5aa0    新墨蓝（强调 / active）
+       blue-2   #1f3c7a    深墨蓝
+       gold     #c28a20    书签金（star 点缀）
+       red      #a8342b    朱批（不想看 active）
+     ------------------------------------------------------------- */
+
+  body {
+    font-family: "Newsreader", "LXGW WenKai", "Source Han Serif SC", "Noto Serif SC", ui-serif, serif;
+    background: #faf6ed;
+    color: #1c2847;
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    flex-direction: column;
+  }
+  a { color: inherit; }
+
+  .meta, .today, .card-meta, .card-stars, .cat-count, .session-item .date,
+  .btn-action, .card-cat, .badge-new, .tag-chip {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+  }
+
+  /* ------------------------------------------------------------
+     Banner: 研究札记式的报头
+     ------------------------------------------------------------- */
+  header {
+    padding: 0.7rem 1.75rem 0.5rem;
+    background: #faf6ed;
+    border-bottom: 1px solid #e4dcc5;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .banner-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.9rem;
+    flex-wrap: wrap;
+  }
+  h1 {
+    margin: 0;
+    font-family: "Newsreader", "LXGW WenKai", ui-serif, serif;
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: 0.005em;
+    color: #8a5a2b;
+    line-height: 1.2;
+    position: relative;
+    top: 2px;
+  }
+  .subtitle {
+    color: #5a6a8a;
+    font-size: 0.82rem;
+    font-family: "LXGW WenKai", ui-serif, serif;
+    letter-spacing: 0.16em;
+  }
+  .subtitle::before { content: "·"; padding-right: 0.5em; color: #b4afa0; }
+  .subtitle::after  { content: "·"; padding-left:  0.5em; color: #b4afa0; }
+  .today {
+    margin-left: auto;
+    color: #8a94a8;
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.14em;
+    white-space: nowrap;
+  }
+  .meta {
+    display: block;
+    margin-top: 0.18rem;
+    color: #8a94a8;
+    font-size: 0.74rem;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+
+  /* Small ornamental dot on the border-bottom, centered */
+  header::after {
+    content: "◆";
+    position: absolute;
+    bottom: -0.45em;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #faf6ed;
+    padding: 0 0.5em;
+    color: #c7b98e;
+    font-size: 0.55rem;
+    line-height: 1;
+  }
+
+  .container {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+  }
+
+  aside {
+    width: 350px;
+    flex-shrink: 0;
+    border-right: 1px solid #e4dcc5;
+    padding: 0.75rem 0;
+    overflow-y: auto;
+    background: #faf6ed;
+  }
+  .session-item {
+    padding: 0.75rem 1.1rem 0.75rem 1.25rem;
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+    user-select: none;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .session-item:hover { background: #f2ecdd; }
+  .session-item.active {
+    border-left-color: #2f5aa0;
+    background: #f2ecdd;
+  }
+  .session-item .topic {
+    color: #1c2847;
+    font-size: 0.98rem;
+    line-height: 1.4;
+    font-weight: 500;
+  }
+  .session-item.active .topic { color: #1f3c7a; }
+  .session-item .sub {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .session-item .date {
+    color: #8a94a8;
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .session-item .count {
+    margin-left: auto;
+    color: #a8a596;
+    font-size: 0.7rem;
+    font-variant-numeric: tabular-nums;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+  }
+  .session-item.active .count { color: #2f5aa0; }
+
+  main {
+    flex: 1;
+    padding: 1.4rem 1.75rem 3rem;
+    min-width: 0;
+    overflow-y: auto;
+    background: #faf6ed;
+  }
+  .empty {
+    color: #8a94a8;
+    padding: 4rem 1rem;
+    text-align: center;
+    line-height: 1.85;
+    font-size: 0.95rem;
+  }
+  .empty code {
+    background: #fbf8ef;
+    border: 1px solid #e4dcc5;
+    padding: 2px 8px;
+    border-radius: 4px;
+    color: #2f5aa0;
+    font-size: 0.9em;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+  }
+
+  .overview {
+    color: #2b3a5c;
+    font-size: 1rem;
+    line-height: 1.85;
+    margin-bottom: 1.2rem;
+    padding: 1rem 1.25rem;
+    background: #fbf8ef;
+    border: 1px solid #e4dcc5;
+    border-left: 3px solid #2f5aa0;
+    border-radius: 4px;
+  }
+
+  .cat-tabs {
+    display: flex;
+    gap: 0.45rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    margin-bottom: 1rem;
+    padding-bottom: 2px;
+  }
+  .cat-tab {
+    padding: 0.38rem 0.9rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    color: #5a6a8a;
+    background: #fbf8ef;
+    border: 1px solid #e4dcc5;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+    flex-shrink: 0;
+    user-select: none;
+  }
+  .cat-tab:hover { border-color: #b4afa0; color: #1c2847; background: #f2ecdd; }
+  .cat-tab.active {
+    background: #2f5aa0;
+    color: #faf6ed;
+    border-color: #2f5aa0;
+    font-weight: 500;
+  }
+  .cat-tab .cat-count {
+    opacity: 0.7;
+    margin-left: 0.4rem;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.78rem;
+  }
+  .cat-tab.active .cat-count { opacity: 0.85; color: #faf6ed; }
+
+  .toolbar {
+    display: flex;
+    gap: 1.25rem;
+    align-items: center;
+    margin-bottom: 1.1rem;
+    font-size: 0.82rem;
+    color: #5a6a8a;
+    flex-wrap: wrap;
+  }
+  .toolbar label { cursor: pointer; user-select: none; display: inline-flex; align-items: center; gap: 6px; }
+  .toolbar input[type=checkbox] { accent-color: #2f5aa0; }
+  .toolbar .cat-title {
+    color: #1f3c7a;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-weight: 600;
+  }
+  .toolbar .spacer { flex: 1; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 0.9rem;
+  }
+
+  /* ------------------------------------------------------------
+     Card: two fixed buttons at bottom-right
+     ------------------------------------------------------------- */
+  .card {
+    position: relative;
+    background: #fbf8ef;
+    border: 1px solid #e4dcc5;
+    border-radius: 6px;
+    padding: 1rem 1.15rem 3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    transition: border-color 0.15s, box-shadow 0.15s, opacity 0.15s;
+    box-shadow: 0 1px 2px rgba(28, 40, 71, 0.04);
+  }
+  .card:hover {
+    border-color: #b4afa0;
+    box-shadow: 0 2px 6px rgba(28, 40, 71, 0.08);
+  }
+  .card.studied { opacity: 0.42; }
+  .card.hidden {
+    opacity: 0.5;
+    border-style: dashed;
+    border-color: #a8342b;
+  }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+  .card-name {
+    font-weight: 600;
+    color: #1c2847;
+    text-decoration: none;
+    font-size: 0.95rem;
+    word-break: break-word;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+  }
+  .card-name:hover { color: #2f5aa0; }
+  .card-stars {
+    color: #b9821c;
+    font-size: 0.78rem;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  /* Hand-drawn line icons — replace all emoji. Stroke/fill inherit currentColor. */
+  .ico {
+    width: 0.9em;
+    height: 0.9em;
+    flex-shrink: 0;
+    display: inline-block;
+    vertical-align: -0.13em;
+  }
+  .card-meta {
+    color: #8a94a8;
+    font-size: 0.72rem;
+    display: flex;
+    gap: 0.7rem;
+    font-variant-numeric: tabular-nums;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .card-cat {
+    color: #a8aec0;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .card-summary {
+    color: #2b3a5c;
+    font-size: 0.95rem;
+    line-height: 1.7;
+  }
+  .card-why {
+    color: #5a6a8a;
+    font-size: 0.88rem;
+    line-height: 1.6;
+    font-style: italic;
+    border-left: 2px solid #e4dcc5;
+    padding-left: 0.6rem;
+  }
+
+  /* Legacy "新" badge (kept for backwards compat if a session lacks tags) */
+  .badge-new {
+    display: inline-block;
+    font-size: 0.66rem;
+    padding: 1px 6px;
+    border-radius: 3px;
+    background: rgba(47, 90, 160, 0.14);
+    color: #1f3c7a;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    line-height: 1.5;
+  }
+
+  /* Market-reception tag chips — driven by reviewer subagent */
+  .card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin: 1px 0 1px;
+  }
+  .tag-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.68rem;
+    padding: 2px 9px 2px 7px;
+    border-radius: 999px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    line-height: 1.55;
+    border: 1px solid transparent;
+  }
+  .tag-chip .ico { opacity: 0.9; }
+  .tag-hot   { background: rgba(220, 76, 58, 0.10);  color: #b33b28; border-color: rgba(220, 76, 58, 0.28); }
+  .tag-new   { background: rgba(47, 148, 96, 0.12);  color: #1f6b45; border-color: rgba(47, 148, 96, 0.30); }
+  .tag-top   { background: rgba(194, 138, 32, 0.14); color: #8a5e0f; border-color: rgba(194, 138, 32, 0.34); }
+  .tag-old   { background: rgba(120, 120, 120, 0.10); color: #6a6a6a; border-color: rgba(120, 120, 120, 0.28); }
+
+  .card-tag-reason {
+    color: #8a94a8;
+    font-size: 0.72rem;
+    line-height: 1.55;
+    font-style: italic;
+  }
+
+  /* Bottom-right action buttons */
+  .card-actions {
+    position: absolute;
+    bottom: 0.85rem;
+    right: 1rem;
+    display: flex;
+    gap: 0.4rem;
+  }
+  .btn-action {
+    background: transparent;
+    border: 1px solid #c2bca8;
+    color: #5a6a8a;
+    padding: 3px 10px 3px 8px;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .btn-action .ico { opacity: 0.85; }
+  .btn-hide:hover { border-color: #a8342b; color: #a8342b; }
+  .btn-hide.active { background: #a8342b; color: #faf6ed; border-color: #a8342b; }
+  .btn-studied:hover { border-color: #2f5aa0; color: #2f5aa0; }
+  .btn-studied.active { background: #2f5aa0; color: #faf6ed; border-color: #2f5aa0; }
+
+  @media (max-width: 720px) {
+    .container { flex-direction: column; }
+    aside {
+      width: 100%;
+      border-right: none;
+      border-bottom: 1px solid #e4dcc5;
+      max-height: 160px;
+      padding: 0.4rem 0;
+    }
+    header { padding: 0.75rem 1rem; }
+    main { padding: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="banner-row">
+    <h1>GitHub Pick</h1>
+    <span class="subtitle" id="subtitle"></span>
+    <span class="today" id="today"></span>
+  </div>
+  <span class="meta" id="meta"></span>
+</header>
+
+<div class="container">
+  <aside id="sessions"></aside>
+  <main id="main"></main>
+</div>
+
+<script src="data.js"></script>
+<script>
+(function () {
+  const list = (typeof SESSIONS !== 'undefined' && Array.isArray(SESSIONS)) ? SESSIONS : [];
+
+  // Injected config (from data.js). Older data.js files have no CONFIG line,
+  // so guard against undefined and fall back gracefully.
+  const cfg = (typeof CONFIG !== 'undefined' && CONFIG) ? CONFIG : null;
+  const lang = (cfg && cfg.lang) || 'zh';
+
+  // ----------------------------------------------------------------
+  // Hand-drawn line icons (NO emoji). All inherit currentColor so they
+  // pick up each chip / button's ink color automatically.
+  // ----------------------------------------------------------------
+  const ICONS = {
+    // tag: 火热 / hot
+    flame: '<svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1.6c.7 2.4-1.5 3.2-1.5 5.1 0 1 .7 1.7 1.5 1.7.9 0 1.6-.8 1.5-1.9 1.1.9 1.7 2.1 1.7 3.5a3.2 3.2 0 1 1-6.4 0c0-2.9 2.3-3.8 3.2-8.4Z"/></svg>',
+    // tag: 新 / new
+    sparkle: '<svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.1 9.05 6.35 13.3 7.4 9.05 8.45 8 12.7 6.95 8.45 2.7 7.4 6.95 6.35 8 2.1Z"/></svg>',
+    // tag: 一线 / top
+    star: '<svg class="ico" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.7l1.86 3.86 4.24.6-3.07 3 .72 4.24L8 11.4 4.25 13.4l.72-4.24-3.07-3 4.24-.6L8 1.7Z"/></svg>',
+    // tag: 老 / old
+    clock: '<svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.6V8l2.5 1.6"/></svg>',
+    // card star count (gold)
+    starGold: '<svg class="ico" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.7l1.86 3.86 4.24.6-3.07 3 .72 4.24L8 11.4 4.25 13.4l.72-4.24-3.07-3 4.24-.6L8 1.7Z"/></svg>',
+    // button: 已研究 / studied
+    check: '<svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.2 8.4 6.3 11.6 12.8 4.7"/></svg>',
+    // button: 不想看 / hide
+    eyeOff: '<svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M6.25 6.3a2.4 2.4 0 0 0 3.4 3.4M2.2 8s2.2-3.9 5.8-3.9c.95 0 1.8.27 2.55.66M13.45 6.2c.45.72.65 1.8.65 1.8s-2.2 3.9-5.8 3.9c-.66 0-1.3-.12-1.9-.34M2.6 2.6l10.8 10.8"/></svg>',
+  };
+  // Tag emoji → icon (class is still resolved separately via tagClass()).
+  const TAG_EMOJI_ICON = {
+    '🔥': ICONS.flame,
+    '🆕': ICONS.sparkle,
+    '🏆': ICONS.star,
+    '📜': ICONS.clock,
+  };
+
+  // Built-in UI string tables. zh + en ship in the file; a language without a
+  // built-in table provides its own labels via config.ui (mapped onto cfg.ui).
+  const BUILTIN = {
+    zh: {
+      subtitle: '开源研究札记',
+      meta_projects: '{n} 个项目 · 已研究 {m}',
+      session_count: '{n} 项',
+      cat_all: '全部',
+      hide_studied: '隐藏已研究',
+      show_hidden: '显示已隐藏',
+      filtered_empty: '该分类下项目都被过滤了。',
+      no_projects: '该分类下没有项目。',
+      card_created: '创建',
+      card_updated: '更新',
+      badge_new: '新',
+      tag_reason_prefix: '标签：',
+      btn_hide: '不想看',
+      btn_studied: '已研究',
+      empty_no_sessions: '还没有任何 session。',
+      empty_run_hint: '在本文件夹里打开 AI，对它说一句「帮我聚合 XX 主题的开源项目」就能开启第一期。',
+      empty_example: '例如：PPT 生成 · Claude Code skill · 文字去AI味',
+    },
+    en: {
+      subtitle: 'Open-source research notes',
+      meta_projects: '{n} projects · {m} studied',
+      session_count: '{n}',
+      cat_all: 'All',
+      hide_studied: 'Hide studied',
+      show_hidden: 'Show hidden',
+      filtered_empty: 'All projects in this category are filtered out.',
+      no_projects: 'No projects in this category.',
+      card_created: 'Created',
+      card_updated: 'Updated',
+      badge_new: 'New',
+      tag_reason_prefix: 'Tag: ',
+      btn_hide: 'Hide',
+      btn_studied: 'Studied',
+      empty_no_sessions: 'No sessions yet.',
+      empty_run_hint: 'Open your AI agent in this folder and ask it to curate the top GitHub projects on a topic to start your first one.',
+      empty_example: 'e.g. PPT generators · Claude Code skills · RAG frameworks',
+    },
+  };
+
+  // Active string table: config.ui override → built-in for lang → zh fallback.
+  const T = (cfg && cfg.ui) || BUILTIN[lang] || BUILTIN.zh;
+  function t(key) {
+    return (T && T[key] != null) ? T[key] : (BUILTIN.zh[key] != null ? BUILTIN.zh[key] : key);
+  }
+  // Tiny {placeholder} interpolation for parameterized strings.
+  function fmt(key, vars) {
+    return String(t(key)).replace(/\{(\w+)\}/g, (m, k) =>
+      (vars && vars[k] != null) ? String(vars[k]) : m);
+  }
+
+  // Reflect the active language on the document element.
+  document.documentElement.lang = lang;
+
+  const state = {
+    activeIdx: 0,
+    activeCatIdx: -1,
+    hideStudied: localStorage.getItem('ghpick:hideStudied') === '1',
+    showHidden: localStorage.getItem('ghpick:showHidden') === '1',
+  };
+
+  // A repo is considered "new" if it was created within the past ~12 months
+  // (relative to when the dashboard loads).
+  const NEW_AGE_MS = 365 * 24 * 60 * 60 * 1000;
+
+  function sessionKey(s) { return s ? (s.slug || s.topic || '') : ''; }
+  function loadActiveCat(s) {
+    const raw = localStorage.getItem('ghpick:cat:' + sessionKey(s));
+    const n = parseInt(raw, 10);
+    return isNaN(n) ? -1 : n;
+  }
+  function saveActiveCat(s, idx) {
+    localStorage.setItem('ghpick:cat:' + sessionKey(s), String(idx));
+  }
+
+  function isStudied(name) { return localStorage.getItem('studied:' + name) === '1'; }
+  function toggleStudied(name) {
+    if (isStudied(name)) localStorage.removeItem('studied:' + name);
+    else localStorage.setItem('studied:' + name, '1');
+  }
+
+  function isHidden(name) { return localStorage.getItem('hidden:' + name) === '1'; }
+  function toggleHidden(name) {
+    if (isHidden(name)) localStorage.removeItem('hidden:' + name);
+    else localStorage.setItem('hidden:' + name, '1');
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  }
+  function escapeAttr(s) {
+    return String(s == null ? '' : s).replace(/"/g, '&quot;');
+  }
+  function formatStars(n) {
+    if (n == null) return '';
+    if (n >= 1000) return (n / 1000).toFixed(n >= 10000 ? 0 : 1) + 'k';
+    return String(n);
+  }
+
+  function yearOf(iso) {
+    if (!iso) return '';
+    return String(iso).slice(0, 4);
+  }
+  function isNewRepo(createdAt) {
+    if (!createdAt) return false;
+    const t = Date.parse(createdAt);
+    if (isNaN(t)) return false;
+    return (Date.now() - t) < NEW_AGE_MS;
+  }
+
+  // Tags are language-agnostic via their LEADING EMOJI: a tag string is
+  // emoji + localized label (e.g. "🔥火热" / "🔥Hot"). The CSS class is chosen
+  // by the leading emoji only, so any language works.
+  const TAG_EMOJI_CLASS = {
+    '🔥': 'tag-hot',
+    '🆕': 'tag-new',
+    '🏆': 'tag-top',
+    '📜': 'tag-old',
+  };
+  // Fallback table for plain / emoji-only legacy tags without a label.
+  const TAG_CLASS = {
+    '🔥火热': 'tag-hot',  '火热': 'tag-hot',  '🔥': 'tag-hot',
+    '🆕新':   'tag-new',  '新':   'tag-new',  '🆕': 'tag-new',
+    '🏆一线': 'tag-top',  '一线': 'tag-top',  '🏆': 'tag-top',
+    '📜老':   'tag-old',  '老':   'tag-old',  '📜': 'tag-old',
+  };
+  // Read the first code point (handles surrogate-pair emoji) of a tag string.
+  function leadingChar(str) {
+    const s = String(str == null ? '' : str);
+    return s.length ? (Array.from(s)[0] || '') : '';
+  }
+  function tagClass(tag) {
+    const cls = TAG_EMOJI_CLASS[leadingChar(tag)];
+    if (cls) return cls;
+    return TAG_CLASS[tag] || '';
+  }
+  function renderTags(tags) {
+    if (!Array.isArray(tags) || !tags.length) return '';
+    const chips = tags.map(tag => {
+      const lead = leadingChar(tag);
+      const cls = tagClass(tag);
+      const icon = TAG_EMOJI_ICON[lead] || '';
+      // Label text always comes from the data (emoji + localized label), so any
+      // language works. When an emoji icon is shown, drop the leading emoji from
+      // the visible label; legacy emoji-only tags ("🔥") render as icon-only.
+      let label = String(tag == null ? '' : tag);
+      if (icon) label = label.slice(lead.length).trim();
+      return `<span class="tag-chip ${cls}">${icon}${escapeHtml(label)}</span>`;
+    }).join('');
+    return `<div class="card-tags">${chips}</div>`;
+  }
+
+  function renderSessions() {
+    const el = document.getElementById('sessions');
+    if (!list.length) { el.innerHTML = ''; return; }
+    el.innerHTML = list.map((s, i) => {
+      const n = (s.categories || []).reduce((a, c) => a + (c.projects || []).length, 0);
+      return `
+      <div class="session-item ${i === state.activeIdx ? 'active' : ''}" data-idx="${i}">
+        <span class="topic">${escapeHtml(s.topic)}</span>
+        <span class="sub">
+          <span class="date">${escapeHtml(s.date || '')}</span>
+          <span class="count">${escapeHtml(fmt('session_count', { n }))}</span>
+        </span>
+      </div>`;
+    }).join('');
+    el.querySelectorAll('.session-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const nextIdx = parseInt(item.dataset.idx, 10);
+        if (nextIdx === state.activeIdx) return;
+        state.activeIdx = nextIdx;
+        state.activeCatIdx = loadActiveCat(list[state.activeIdx]);
+        renderAll();
+      });
+    });
+  }
+
+  function renderMain() {
+    const el = document.getElementById('main');
+    const metaEl = document.getElementById('meta');
+
+    if (!list.length) {
+      metaEl.textContent = '';
+      el.innerHTML = `
+        <div class="empty">
+          <p>${escapeHtml(t('empty_no_sessions'))}</p>
+          <p>${escapeHtml(t('empty_run_hint'))}</p>
+          <p style="color:#a8aec0;font-size:0.85em;margin-top:2em;">${escapeHtml(t('empty_example'))}</p>
+        </div>`;
+      return;
+    }
+
+    const s = list[state.activeIdx] || list[0];
+    const categories = s.categories || [];
+    const totalProjects = categories.reduce((n, c) => n + (c.projects || []).length, 0);
+    const studiedCount = categories.reduce(
+      (n, c) => n + (c.projects || []).filter(p => isStudied(p.name)).length,
+      0
+    );
+
+    metaEl.textContent = fmt('meta_projects', { n: totalProjects, m: studiedCount });
+
+    if (state.activeCatIdx >= categories.length) state.activeCatIdx = -1;
+
+    const catTabsHtml = `
+      <div class="cat-tab ${state.activeCatIdx === -1 ? 'active' : ''}" data-cat="-1">
+        ${escapeHtml(t('cat_all'))}<span class="cat-count">${totalProjects}</span>
+      </div>
+      ${categories.map((c, i) => `
+        <div class="cat-tab ${state.activeCatIdx === i ? 'active' : ''}" data-cat="${i}">
+          ${escapeHtml(c.name)}<span class="cat-count">${(c.projects || []).length}</span>
+        </div>
+      `).join('')}
+    `;
+
+    let projects;
+    let activeCatName;
+    if (state.activeCatIdx === -1) {
+      projects = categories.flatMap(c =>
+        (c.projects || []).map(p => Object.assign({ _cat: c.name }, p))
+      );
+      activeCatName = t('cat_all');
+    } else {
+      const c = categories[state.activeCatIdx];
+      projects = (c && c.projects) ? c.projects.slice() : [];
+      activeCatName = c ? c.name : '';
+    }
+
+    const visible = projects.filter(p => {
+      if (state.hideStudied && isStudied(p.name)) return false;
+      if (!state.showHidden && isHidden(p.name)) return false;
+      return true;
+    });
+
+    const filterActive = state.hideStudied || !state.showHidden;
+    const gridHtml = visible.length
+      ? `<div class="grid">${visible.map(p => renderCard(p)).join('')}</div>`
+      : `<div class="empty">${escapeHtml(filterActive ? t('filtered_empty') : t('no_projects'))}</div>`;
+
+    el.innerHTML = `
+      ${s.overview ? `<div class="overview">${escapeHtml(s.overview)}</div>` : ''}
+      <div class="cat-tabs">${catTabsHtml}</div>
+      <div class="toolbar">
+        <span class="cat-title">${escapeHtml(activeCatName)} · ${visible.length}${filterActive && visible.length !== projects.length ? ` / ${projects.length}` : ''}</span>
+        <span class="spacer"></span>
+        <label><input type="checkbox" id="hide-studied" ${state.hideStudied ? 'checked' : ''}> ${escapeHtml(t('hide_studied'))}</label>
+        <label><input type="checkbox" id="show-hidden" ${state.showHidden ? 'checked' : ''}> ${escapeHtml(t('show_hidden'))}</label>
+      </div>
+      ${gridHtml}
+    `;
+
+    el.querySelectorAll('.cat-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        state.activeCatIdx = parseInt(tab.dataset.cat, 10);
+        saveActiveCat(list[state.activeIdx], state.activeCatIdx);
+        renderMain();
+      });
+    });
+
+    const hs = document.getElementById('hide-studied');
+    if (hs) hs.addEventListener('change', e => {
+      state.hideStudied = e.target.checked;
+      localStorage.setItem('ghpick:hideStudied', state.hideStudied ? '1' : '0');
+      renderMain();
+    });
+
+    const sh = document.getElementById('show-hidden');
+    if (sh) sh.addEventListener('change', e => {
+      state.showHidden = e.target.checked;
+      localStorage.setItem('ghpick:showHidden', state.showHidden ? '1' : '0');
+      renderMain();
+    });
+
+    el.querySelectorAll('.btn-studied').forEach(btn => {
+      btn.addEventListener('click', () => {
+        toggleStudied(btn.dataset.name);
+        renderAll();
+      });
+    });
+
+    el.querySelectorAll('.btn-hide').forEach(btn => {
+      btn.addEventListener('click', () => {
+        toggleHidden(btn.dataset.name);
+        renderAll();
+      });
+    });
+  }
+
+  function renderCard(p) {
+    const studied = isStudied(p.name);
+    const hidden = isHidden(p.name);
+    const classes = ['card'];
+    if (studied) classes.push('studied');
+    if (hidden) classes.push('hidden');
+
+    const createdYear = yearOf(p.createdAt);
+    const tagsHtml = renderTags(p.tags);
+    // Legacy fallback: show auto-新 only if session has no tag data at all
+    const legacyNewBadge = (!Array.isArray(p.tags) && isNewRepo(p.createdAt))
+      ? `<span class="badge-new">${escapeHtml(t('badge_new'))}</span>` : '';
+
+    return `
+      <article class="${classes.join(' ')}">
+        <div class="card-header">
+          <a class="card-name" href="${escapeAttr(p.url)}" target="_blank" rel="noopener">${escapeHtml(p.name)}</a>
+          <span class="card-stars">${ICONS.starGold}${formatStars(p.stars)}</span>
+        </div>
+        ${tagsHtml}
+        <div class="card-meta">
+          ${p.language ? `<span>${escapeHtml(p.language)}</span>` : ''}
+          ${createdYear ? `<span>${escapeHtml(t('card_created'))} ${createdYear}</span>` : ''}
+          ${p.pushedAt ? `<span>${escapeHtml(t('card_updated'))} ${escapeHtml(p.pushedAt)}</span>` : ''}
+          ${legacyNewBadge}
+          ${p._cat ? `<span class="card-cat">${escapeHtml(p._cat)}</span>` : ''}
+        </div>
+        <div class="card-summary">${escapeHtml(p.summary || '')}</div>
+        ${p.why ? `<div class="card-why">${escapeHtml(p.why)}</div>` : ''}
+        ${p.tagReason ? `<div class="card-tag-reason">${escapeHtml(t('tag_reason_prefix'))}${escapeHtml(p.tagReason)}</div>` : ''}
+        <div class="card-actions">
+          <button class="btn-action btn-hide ${hidden ? 'active' : ''}" data-name="${escapeAttr(p.name)}">${ICONS.eyeOff}<span>${escapeHtml(t('btn_hide'))}</span></button>
+          <button class="btn-action btn-studied ${studied ? 'active' : ''}" data-name="${escapeAttr(p.name)}">${ICONS.check}<span>${escapeHtml(t('btn_studied'))}</span></button>
+        </div>
+      </article>
+    `;
+  }
+
+  function renderAll() {
+    renderSessions();
+    renderMain();
+  }
+
+  function renderToday() {
+    const el = document.getElementById('today');
+    if (!el) return;
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    el.textContent = `${y} · ${m} · ${day}`;
+  }
+
+  function renderHeader() {
+    const el = document.getElementById('subtitle');
+    if (el) el.textContent = t('subtitle');
+    // Keep the browser tab title in the active language too.
+    document.title = 'GitHub Pick · ' + t('subtitle');
+  }
+
+  renderHeader();
+  renderToday();
+  if (list.length) {
+    state.activeCatIdx = loadActiveCat(list[state.activeIdx]);
+  }
+  renderAll();
+})();
+</script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-# github-pick
+# GitHub Pick
 
 > **Clone it, open any AI agent inside the folder, and just say *"curate the top GitHub
 > projects on X."*** You get a localized, double-click-to-open research board — the agent
@@ -11,7 +11,7 @@
 
 ---
 
-**github-pick** turns *"I want to learn the open-source landscape of X"* into a clean,
+**GitHub Pick** turns *"I want to learn the open-source landscape of X"* into a clean,
 scannable dashboard. You give a topic; the AI searches GitHub broadly, judges each
 project's real-world reception, tags it, and writes a localized digest. A zero-build
 static dashboard (`index.html` + `data.js`) renders it — double-click, no server, no
